@@ -53,16 +53,18 @@ display:
       
       // it.printf(0,0,id(digit_font),"%s", id(Scrolltext).state.c_str());
       if (time.is_valid()) { 
+         // check if time is valid. if falid check daylightsaving time
         if (time.is_dst ){
-          
+          // if daylight safing time is true - the Lettercode for Germany is B (UTC+2) 
           if ((int(time.second) % 2) == 0){
+            // let the point at the end of line blink (when seconds is even)
             it.strftime(0, 0, id(digit_font), "%d %H%M B %b %y.", id(sntp_time).now());
             } else {
             it.strftime(0, 0, id(digit_font), "%d %H%M B %b %y", id(sntp_time).now());
             }
           
         } else {
-        
+         // time is not daylight safing time - the lettercode for (UTC+1) is A
           if ((int(time.second) % 2) == 0){
             it.strftime(0, 0, id(digit_font), "%d %H%M A %b %y.", id(sntp_time).now());
           } else {
@@ -71,7 +73,9 @@ display:
           
         }
       } else {
+          // no valid time then check if wifi is connected
               if (id(wifisignal).has_state()) {
+                  // wifi seems to have a state so lets wait for ntp
                   it.printf(0, 0, id(digit_font), "Getting Time from NTP");
                 }
                 else {
@@ -89,7 +93,7 @@ sensor:
   - platform: wifi_signal
     name: "WiFi Signal Sensor"
     id: wifisignal
-    update_interval: 60s
+    update_interval: 10s
 
 time:
   - platform: sntp
