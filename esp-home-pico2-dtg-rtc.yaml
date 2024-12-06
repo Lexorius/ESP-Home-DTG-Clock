@@ -1,0 +1,140 @@
+esphome:
+  name: picow-clock-1
+  friendly_name: PicoW-Clock-1
+  on_boot:
+   then:
+      # read the RTC time once when the system boots
+      ds1307.read_time:
+
+rp2040:
+  board: rpipicow
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "<ecryptionpw>"
+
+ota:
+  - platform: esphome
+    password: "<otapw>"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot in case wifi connection fails
+  ap:
+    ssid: "Picow-Clock-1 Fallback Hotspot"
+    password: "<fallback>"
+    
+i2c:
+  sda: 20
+  scl: 21
+  scan: true
+  id: mainbus
+
+spi:
+   clk_pin: GPIO02
+   mosi_pin: GPIO03
+
+   
+#SPI0_SCK Pin 6
+#SPI0_MOSI Pin 7
+#SPI0_MISO Pin 4
+#SPI1_SCK Pin 10
+#SPI1_MOSI Pin 11
+#SPI1_MISO Pin 8
+
+display:
+  - platform: max7219digit
+    update_interval: 1s
+    cs_pin: GPIO05
+    num_chips: 12
+    scroll_speed: 0ms
+    intensity: 7
+    lambda: |
+      auto time = id(sntp_time).now();
+      
+      // it.printf(0,0,id(digit_font),"%s", id(Scrolltext).state.c_str());
+      if (time.is_valid()) { 
+        if (time.is_dst ){
+          
+          if ((int(time.second) % 2) == 0){
+            it.strftime(0, 0, id(digit_font), "%d %H%M B %b %y.", id(sntp_time).now());
+            } else {
+            it.strftime(0, 0, id(digit_font), "%d %H%M B %b %y", id(sntp_time).now());
+            }
+          
+        } else {
+        
+          if ((int(time.second) % 2) == 0){
+            it.strftime(0, 0, id(digit_font), "%d %H%M A %b %y.", id(sntp_time).now());
+          } else {
+            it.strftime(0, 0, id(digit_font), "%d %H%M A %b %y", id(sntp_time).now());
+          }
+          
+        }
+      } else {
+              if (id(wifisignal).has_state()) {
+                  it.printf(0, 0, id(digit_font), "Getting Time from NTP");
+                }
+                else {
+                  it.printf(0, 0, id(digit_font),"Connecting Wifi");
+                }
+      }
+      
+
+font:
+  - file: "fonts/pixelmix.ttf"
+    id: digit_font
+    size: 8
+
+sensor:
+  
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    id: wifisignal
+    update_interval: 60s
+
+  - platform: bmp085
+    temperature:
+      name: "Outside Temperature"
+    pressure:
+      name: "Outside Pressure"
+    update_interval: 60s
+  - platform: hmc5883l
+    address: 0x1E
+    field_strength_x:
+      name: "HMC5883L Field Strength X"
+    field_strength_y:
+      name: "HMC5883L Field Strength Y"
+    field_strength_z:
+      name: "HMC5883L Field Strength Z"
+    heading:
+      name: "HMC5883L Heading"
+    oversampling: 1x
+    range: 130uT
+    update_interval: 60s
+
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Berlin
+    servers:
+     - 0.pool.ntp.org
+     - 1.pool.ntp.org
+     - 2.pool.ntp.org    
+    on_time_sync:
+      then:
+        # ... and update the RTC when the synchronization was successful
+        ds1307.write_time:
+
+  - platform: ds1307
+    # repeated synchronization is not necessary unless the external RTC
+    # is much more accurate than the internal clock
+    update_interval: never
+    # instead try to synchronize via network repeatedly ...
